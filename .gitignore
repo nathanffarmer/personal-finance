@@ -35,6 +35,8 @@ node_modules/
 # Frontend build output
 frontend/dist/
 frontend/.vite/
+frontend/tsconfig.tsbuildinfo
+frontend/*.tsbuildinfo
 
 # IDE
 .vscode/
