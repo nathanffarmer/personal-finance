@@ -1,0 +1,51 @@
+# Secrets
+.env
+.env.local
+secrets/
+*.pem
+*.pickle
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+.npm
+.eslintcache
+*.log
+.cache/
+.vite/
+
+# Frontend build output
+frontend/dist/
+frontend/.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Generated
+shared/openapi.json
+frontend/src/types/api.ts
+
+# Test/coverage
+coverage/
