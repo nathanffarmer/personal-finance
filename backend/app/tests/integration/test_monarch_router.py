@@ -1,6 +1,5 @@
 """Router-level test: mock the MonarchClient, verify routes return mapped data."""
 
-from datetime import datetime
 from unittest.mock import AsyncMock
 
 import pytest

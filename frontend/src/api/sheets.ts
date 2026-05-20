@@ -71,4 +71,9 @@ export const sheetsApi = {
   readTab: (name: string) => api<unknown[][]>(`/api/sheets/tab/${encodeURIComponent(name)}`),
   pushAccounts: () => api<PushResult>("/api/sheets/push/accounts", { method: "POST" }),
   pushHoldings: () => api<PushResult>("/api/sheets/push/holdings", { method: "POST" }),
+  pushProjection: (result: unknown) =>
+    api<PushResult>("/api/sheets/push/projection", {
+      method: "POST",
+      body: JSON.stringify(result),
+    }),
 };

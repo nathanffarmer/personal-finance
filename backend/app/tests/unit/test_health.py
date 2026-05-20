@@ -5,9 +5,10 @@ def test_health_ok(client):
 
 
 def test_health_unauthenticated_even_with_password(monkeypatch):
+    from fastapi.testclient import TestClient
+
     from backend.app.config import Settings, get_settings
     from backend.app.main import create_app
-    from fastapi.testclient import TestClient
 
     application = create_app()
     application.dependency_overrides[get_settings] = lambda: Settings(app_password="secret")

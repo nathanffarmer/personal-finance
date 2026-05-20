@@ -97,6 +97,13 @@ export const monarchApi = {
       body: JSON.stringify(items),
     }),
   clearCache: () => api<{ cleared: number }>("/api/monarch/cache/clear", { method: "POST" }),
+  status: () =>
+    api<{
+      credentials_configured: boolean;
+      mfa_secret_configured: boolean;
+      session_cached: boolean;
+      logged_in: boolean;
+    }>("/api/monarch/status"),
 };
 
 export function formatCurrency(value: number, currency = "USD"): string {
