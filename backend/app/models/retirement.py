@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AssetAllocation(BaseModel):
@@ -68,6 +68,16 @@ class ScenarioInput(BaseModel):
     glide_path: GlidePath = Field(default_factory=GlidePath)
     tax: TaxConfig = Field(default_factory=TaxConfig)
     return_assumptions: ReturnAssumptions = Field(default_factory=ReturnAssumptions)
+
+    @model_validator(mode="after")
+    def _check_ages(self) -> ScenarioInput:
+        # retirement_age may be below current_age (already retired) — that is
+        # valid. The breaking invariant is that the plan horizon covers both.
+        if self.end_age < self.current_age:
+            raise ValueError("end_age must be >= current_age")
+        if self.end_age < self.retirement_age:
+            raise ValueError("end_age must be >= retirement_age")
+        return self
 
 
 class DeterministicProjection(BaseModel):

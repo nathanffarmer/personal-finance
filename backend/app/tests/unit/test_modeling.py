@@ -328,3 +328,90 @@ def test_roth_withdrawal_is_untaxed():
         taxable_share=0.0,
     )
     assert estimate_tax_on_withdrawal(100_000, config) == 0.0
+
+
+# ---- Scenario validation ---------------------------------------------------
+
+def test_scenario_rejects_end_age_before_current_age():
+    with pytest.raises(ValueError):
+        _simple_scenario(current_age=70, retirement_age=65, end_age=60)
+
+
+def test_scenario_allows_already_retired():
+    """current_age > retirement_age (already retired) is a valid scenario."""
+    scenario = _simple_scenario(current_age=72, retirement_age=65, end_age=95)
+    assert scenario.current_age == 72
+
+
+# ---- Bug regressions -------------------------------------------------------
+
+def test_monte_carlo_four_percent_seeds_when_already_retired():
+    """Regression: four_percent must withdraw even if retirement is in the past.
+
+    Previously the initial target only seeded at i == retirement_age - current_age,
+    which is negative for an already-retired plan, so it withdrew nothing.
+    """
+    four_pct = _simple_scenario(
+        current_age=70,
+        retirement_age=65,
+        end_age=92,
+        withdrawal_strategy=WithdrawalStrategy(
+            kind="four_percent", params={"initial_rate": 0.04}
+        ),
+    )
+    # fixed_real at the same 4% of the starting balance is the expected behaviour.
+    fixed = _simple_scenario(
+        current_age=70,
+        retirement_age=65,
+        end_age=92,
+        annual_spend_real=0.04 * 1_000_000,
+        withdrawal_strategy=WithdrawalStrategy(kind="fixed_real"),
+    )
+    r_4pct = run_monte_carlo(
+        MonteCarloRequest(scenario=four_pct, trials=1_500, method="bootstrap", seed=21)
+    )
+    r_fixed = run_monte_carlo(
+        MonteCarloRequest(scenario=fixed, trials=1_500, method="bootstrap", seed=21)
+    )
+    # With the bug, four_percent withdrew nothing -> success 1.0 and a far
+    # larger terminal balance than the equivalent fixed-real plan.
+    assert r_4pct.success_rate == pytest.approx(r_fixed.success_rate, abs=0.02)
+    assert r_4pct.median_terminal_real == pytest.approx(
+        r_fixed.median_terminal_real, rel=0.05
+    )
+
+
+def test_vpw_withdrawal_ignores_guaranteed_income_deterministic():
+    """VPW prescribes a portfolio withdrawal directly; Social Security must not
+    reduce it. The withdrawal path is therefore identical with or without SS."""
+    with_ss = _simple_scenario(
+        withdrawal_strategy=WithdrawalStrategy(kind="vpw"),
+        social_security=CashFlowSpec(start_age=70, monthly_real=3_000),
+    )
+    without_ss = _simple_scenario(
+        withdrawal_strategy=WithdrawalStrategy(kind="vpw"),
+    )
+    p_ss = project_deterministic(with_ss)
+    p_no = project_deterministic(without_ss)
+    assert p_ss.withdrawals == p_no.withdrawals
+
+
+def test_vpw_monte_carlo_consistent_with_deterministic_convention():
+    """Regression: the MC engine must not subtract guaranteed income from the
+    VPW target (the deterministic engine never did). With the fix, an SS stream
+    leaves the VPW Monte Carlo result unchanged."""
+    with_ss = _simple_scenario(
+        withdrawal_strategy=WithdrawalStrategy(kind="vpw"),
+        social_security=CashFlowSpec(start_age=70, monthly_real=3_000),
+    )
+    without_ss = _simple_scenario(
+        withdrawal_strategy=WithdrawalStrategy(kind="vpw"),
+    )
+    r_ss = run_monte_carlo(
+        MonteCarloRequest(scenario=with_ss, trials=1_000, method="bootstrap", seed=4)
+    )
+    r_no = run_monte_carlo(
+        MonteCarloRequest(scenario=without_ss, trials=1_000, method="bootstrap", seed=4)
+    )
+    assert r_ss.success_rate == r_no.success_rate
+    assert r_ss.percentiles.p50 == r_no.percentiles.p50

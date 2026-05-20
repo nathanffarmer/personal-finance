@@ -64,6 +64,8 @@ def project_deterministic(scenario: ScenarioInput) -> DeterministicProjection:
             years_remaining = scenario.end_age - age
             guaranteed = _cashflow_income(scenario, age)
             if scenario.withdrawal_strategy.kind == "vpw":
+                # VPW prescribes a portfolio withdrawal directly; guaranteed
+                # income is separate and does not offset it.
                 gross = vpw_rate_for_age(age) * max(balance, 0.0)
             else:
                 target, state = withdrawal_for_year(

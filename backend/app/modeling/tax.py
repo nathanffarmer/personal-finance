@@ -111,21 +111,3 @@ def _ltcg_tax(
         if remaining <= 0:
             break
     return tax
-
-
-def gross_up_for_net(net_needed: float, config: TaxConfig) -> float:
-    """Find the gross withdrawal whose after-tax value is ``net_needed``.
-
-    Solved by a short fixed-point iteration since the bracket function is
-    monotone and piecewise linear.
-    """
-    if not config.enabled or net_needed <= 0:
-        return max(0.0, net_needed)
-    gross = net_needed
-    for _ in range(12):
-        tax = estimate_tax_on_withdrawal(gross, config)
-        new_gross = net_needed + tax
-        if abs(new_gross - gross) < 1.0:
-            return new_gross
-        gross = new_gross
-    return gross

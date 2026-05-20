@@ -110,7 +110,9 @@ def run_monte_carlo(req: MonteCarloRequest) -> MonteCarloResult:
                 balance=balance,
                 guaranteed=guaranteed,
                 years_remaining=years_remaining,
-                first_retirement_year=(i == ret_idx),
+                # max(ret_idx, 0) so an already-retired scenario seeds the
+                # four-percent target at year 0 instead of never.
+                first_retirement_year=(i == max(ret_idx, 0)),
                 initial_target=initial_target,
                 gk_withdrawal=gk_withdrawal,
                 gk_seeded=gk_seeded,
@@ -180,6 +182,13 @@ def _withdrawal_vector(
     strat = scenario.withdrawal_strategy
     safe_balance = np.maximum(balance, 0.0)
 
+    if strat.kind == "vpw":
+        # VPW prescribes a portfolio withdrawal directly; guaranteed income
+        # (Social Security/pensions) is separate spending money and does not
+        # offset it. This matches the deterministic engine.
+        gross = vpw_rate_for_age(age) * safe_balance
+        return np.minimum(gross, safe_balance)
+
     if strat.kind == "fixed_real":
         target = np.full_like(balance, float(scenario.annual_spend_real))
     elif strat.kind == "four_percent":
@@ -187,8 +196,6 @@ def _withdrawal_vector(
         if first_retirement_year:
             initial_target[:] = rate * safe_balance
         target = initial_target.copy()
-    elif strat.kind == "vpw":
-        target = vpw_rate_for_age(age) * safe_balance
     elif strat.kind == "guyton_klinger":
         target = _guyton_klinger_vector(
             strat, safe_balance, gk_withdrawal, gk_seeded, years_remaining
@@ -196,8 +203,9 @@ def _withdrawal_vector(
     else:
         target = np.full_like(balance, float(scenario.annual_spend_real))
 
+    # These strategies define a total spending target; guaranteed income
+    # offsets the portfolio withdrawal. Cannot withdraw more than remains.
     gross = np.maximum(0.0, target - guaranteed)
-    # Cannot withdraw more than what remains.
     return np.minimum(gross, safe_balance)
 
 
