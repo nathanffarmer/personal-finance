@@ -100,6 +100,13 @@ class PercentileBands(BaseModel):
     p95: list[float]
 
 
+class FailureBin(BaseModel):
+    """One bar of the failure histogram: how many trials depleted at this age."""
+
+    age: int
+    count: int
+
+
 class MonteCarloRequest(BaseModel):
     scenario: ScenarioInput
     trials: int = 10000
@@ -118,7 +125,7 @@ class MonteCarloResult(BaseModel):
     terminal_p5: float
     terminal_p50: float
     terminal_p95: float
-    failure_ages: list[int]
+    failure_ages: list[FailureBin]
     scenario_echo: ScenarioInput
 
 

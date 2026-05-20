@@ -88,6 +88,11 @@ export interface PercentileBands {
   p95: number[];
 }
 
+export interface FailureBin {
+  age: number;
+  count: number;
+}
+
 export interface MonteCarloResult {
   trials: number;
   method: "bootstrap" | "lognormal";
@@ -98,7 +103,7 @@ export interface MonteCarloResult {
   terminal_p5: number;
   terminal_p50: number;
   terminal_p95: number;
-  failure_ages: number[];
+  failure_ages: FailureBin[];
   scenario_echo: ScenarioInput;
 }
 

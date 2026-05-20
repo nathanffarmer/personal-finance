@@ -12,7 +12,10 @@ from backend.app.modeling.returns import (
     load_historical_series,
     lognormal_returns,
 )
-from backend.app.modeling.tax import estimate_tax_on_withdrawal
+from backend.app.modeling.tax import (
+    estimate_tax_on_withdrawal,
+    estimate_tax_vectorized,
+)
 from backend.app.modeling.withdrawal import vpw_rate_for_age
 from backend.app.models.retirement import (
     AssetAllocation,
@@ -256,7 +259,13 @@ def test_monte_carlo_overspending_mostly_fails():
         MonteCarloRequest(scenario=scenario, trials=1_000, method="bootstrap", seed=3)
     )
     assert result.success_rate < 0.5
+    # failure_ages is an aggregated histogram, not one entry per trial.
     assert len(result.failure_ages) > 0
+    total_failures = sum(b.count for b in result.failure_ages)
+    assert total_failures == round((1.0 - result.success_rate) * result.trials)
+    assert all(b.age >= scenario.current_age for b in result.failure_ages)
+    # Histogram has at most one bin per simulated year.
+    assert len(result.failure_ages) <= len(result.ages)
 
 
 def test_guyton_klinger_beats_fixed_real_at_same_initial_rate():
@@ -328,6 +337,37 @@ def test_roth_withdrawal_is_untaxed():
         taxable_share=0.0,
     )
     assert estimate_tax_on_withdrawal(100_000, config) == 0.0
+
+
+def test_taxable_withdrawal_pays_ltcg_on_gains_only():
+    """Taxable-account dollars are taxed only on the gain fraction, at LTCG rates."""
+    config = TaxConfig(
+        enabled=True,
+        filing_status="mfj",
+        pretax_share=0.0,
+        roth_share=0.0,
+        taxable_share=1.0,
+        taxable_basis_fraction=0.5,  # half basis, half gain
+    )
+    tax = estimate_tax_on_withdrawal(300_000, config)
+    # $150k realized gain for MFJ: first $96,700 at 0%, remainder at 15%.
+    expected = (150_000 - 96_700) * 0.15
+    assert tax == pytest.approx(expected, rel=1e-6)
+
+
+def test_estimate_tax_vectorized_matches_scalar():
+    """The vectorized path must agree with the scalar wrapper elementwise."""
+    config = TaxConfig(
+        enabled=True,
+        filing_status="single",
+        pretax_share=0.6,
+        roth_share=0.1,
+        taxable_share=0.3,
+    )
+    grosses = np.array([0.0, 20_000.0, 80_000.0, 250_000.0])
+    vec = estimate_tax_vectorized(grosses, config)
+    scalar = np.array([estimate_tax_on_withdrawal(float(g), config) for g in grosses])
+    assert np.allclose(vec, scalar)
 
 
 # ---- Scenario validation ---------------------------------------------------

@@ -11,6 +11,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..models.retirement import (
+    FailureBin,
     MonteCarloRequest,
     MonteCarloResult,
     PercentileBands,
@@ -22,7 +23,7 @@ from .returns import (
     load_historical_series,
     lognormal_returns,
 )
-from .tax import estimate_tax_on_withdrawal
+from .tax import estimate_tax_vectorized
 from .withdrawal import vpw_rate_for_age
 
 
@@ -38,16 +39,6 @@ def _guaranteed_income(scenario: ScenarioInput, age: int) -> float:
 
 def _one_off(scenario: ScenarioInput, age: int) -> float:
     return sum(c.amount_real for c in scenario.one_off_cashflows if c.age == age)
-
-
-def _vectorized_tax(gross: np.ndarray, scenario: ScenarioInput) -> np.ndarray:
-    if not scenario.tax.enabled:
-        return np.zeros_like(gross)
-    flat = gross.ravel()
-    taxed = np.array(
-        [estimate_tax_on_withdrawal(float(g), scenario.tax) for g in flat]
-    )
-    return taxed.reshape(gross.shape)
 
 
 def run_monte_carlo(req: MonteCarloRequest) -> MonteCarloResult:
@@ -119,7 +110,7 @@ def run_monte_carlo(req: MonteCarloRequest) -> MonteCarloResult:
             )
             if strat.kind == "guyton_klinger":
                 gk_seeded = True
-            tax = _vectorized_tax(gross, scenario)
+            tax = estimate_tax_vectorized(gross, scenario.tax)
             balance = (balance - gross - tax) * (1.0 + port_return)
 
         balance = balance + _one_off(scenario, age)
@@ -129,16 +120,19 @@ def run_monte_carlo(req: MonteCarloRequest) -> MonteCarloResult:
     terminal = history[:, -1]
     success_rate = float(np.mean(terminal > 0.0))
 
-    # Failure ages: first year balance hits zero, for paths that fail.
-    failure_ages: list[int] = []
+    # Failure histogram: count of trials by the age at which the portfolio
+    # first hit zero. Aggregated (not one entry per trial) to keep the
+    # response small even when most trials fail.
+    failure_ages: list[FailureBin] = []
     zero_mask = history <= 0.0
     failed = zero_mask.any(axis=1) & (terminal <= 0.0)
     if failed.any():
         first_zero = np.argmax(zero_mask, axis=1)
+        failed_ages = scenario.current_age + first_zero[failed]
+        unique_ages, counts = np.unique(failed_ages, return_counts=True)
         failure_ages = [
-            int(scenario.current_age + first_zero[t])
-            for t in range(trials)
-            if failed[t]
+            FailureBin(age=int(a), count=int(c))
+            for a, c in zip(unique_ages, counts, strict=True)
         ]
 
     pct = np.percentile(history, [5, 25, 50, 75, 95], axis=0)

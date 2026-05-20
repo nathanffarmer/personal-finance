@@ -156,3 +156,19 @@ def test_net_worth_aggregates_by_type():
         cash=5000.0, investment=200000.0, credit=-1500.0, loan=-300000.0
     )
     assert nw.total == pytest.approx(5000 + 200000 - 1500 - 300000)
+
+
+def test_net_worth_handles_positive_signed_liabilities():
+    """Liabilities reduce net worth even if Monarch reports them as positive."""
+    from backend.app.models.monarch import Account
+
+    accounts = [
+        Account(id="1", name="Checking", type="depository", balance_current=5000),
+        # Same debts as above but reported as positive balances.
+        Account(id="2", name="Credit Card", type="credit", balance_current=1500),
+        Account(id="3", name="Mortgage", type="loan", balance_current=300000),
+    ]
+    nw = MonarchClient.net_worth(accounts)
+    assert nw.by_type.credit == -1500.0
+    assert nw.by_type.loan == -300000.0
+    assert nw.total == pytest.approx(5000 - 1500 - 300000)

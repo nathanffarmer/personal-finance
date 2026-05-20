@@ -298,6 +298,9 @@ class MonarchClient:
             "logged_in": self._mm is not None,
         }
 
+    # Account types whose balance is a debt (reduces net worth).
+    _LIABILITY_TYPES = ("credit", "loan")
+
     @staticmethod
     def net_worth(accounts: list[Account]) -> NetWorth:
         # NetWorthByType uses friendly names; depository -> cash, the rest match.
@@ -314,7 +317,15 @@ class MonarchClient:
             if a.is_hidden:
                 continue
             field = type_to_field.get(a.type, "other")
-            setattr(bucket, field, getattr(bucket, field) + a.balance_current)
+            if a.type in MonarchClient._LIABILITY_TYPES:
+                # Liabilities must reduce net worth regardless of whether
+                # Monarch reports the balance as positive or negative — some
+                # institutions/account types differ. Normalize to a negative
+                # contribution so the total is correct either way.
+                contribution = -abs(a.balance_current)
+            else:
+                contribution = a.balance_current
+            setattr(bucket, field, getattr(bucket, field) + contribution)
         total = (
             bucket.cash
             + bucket.investment
