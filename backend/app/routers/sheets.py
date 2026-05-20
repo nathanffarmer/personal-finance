@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 
 from ..config import Settings, get_settings
+from ..models.retirement import MonteCarloResult
 from ..models.sheets import Assumptions, PushResult, SheetsStatus, TargetRow
 from ..services.monarch_client import MonarchClient, get_monarch_client
 from ..services.sheets_client import SheetsClient, get_sheets_client
@@ -107,5 +108,34 @@ async def push_holdings(
                 ],
             )
     tab = settings.sheets_tab_holdings
+    written = sheets.overwrite_tab(tab, rows)
+    return PushResult(written_rows=written or len(rows), range=f"{tab}!A1")
+
+
+@router.post("/push/projection", response_model=PushResult)
+async def push_projection(
+    result: MonteCarloResult,
+    settings: Settings = Depends(get_settings),
+    sheets: SheetsClient = Depends(get_sheets_client),
+) -> PushResult:
+    """Write Monte Carlo percentile bands to the Projections tab."""
+    bands = result.percentiles
+    rows: list[list] = [
+        ["year", "age", "p5", "p25", "p50", "p75", "p95", "success_rate"],
+    ]
+    for i, age in enumerate(result.ages):
+        rows.append(
+            [
+                i,
+                age,
+                bands.p5[i],
+                bands.p25[i],
+                bands.p50[i],
+                bands.p75[i],
+                bands.p95[i],
+                result.success_rate,
+            ],
+        )
+    tab = settings.sheets_tab_projections
     written = sheets.overwrite_tab(tab, rows)
     return PushResult(written_rows=written or len(rows), range=f"{tab}!A1")

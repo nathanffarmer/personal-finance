@@ -150,3 +150,10 @@ async def categorize_bulk(
 async def clear_cache(cache: TTLCache = Depends(get_cache)) -> dict[str, int]:
     cleared = cache.clear("monarch:")
     return {"cleared": cleared}
+
+
+@router.get("/status")
+async def monarch_status(
+    client: MonarchClient = Depends(get_monarch_client),
+) -> dict:
+    return client.status()

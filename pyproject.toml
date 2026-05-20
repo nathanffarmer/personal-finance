@@ -46,7 +46,8 @@ src = ["backend"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "RUF"]
-ignore = ["E501"]
+# B008: Depends()/Query() in defaults is the idiomatic FastAPI pattern.
+ignore = ["E501", "B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/app/tests"]

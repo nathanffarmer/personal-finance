@@ -284,6 +284,20 @@ class MonarchClient:
         payload = _extract_first(raw, "transaction", "updateTransaction")
         return map_transaction(payload or {"id": transaction_id, "amount": 0.0, "account": {"id": ""}, "date": date.today().isoformat()})
 
+    def status(self) -> dict[str, Any]:
+        """Report configuration/session state without forcing a login."""
+        return {
+            "credentials_configured": bool(
+                self._settings.monarch_email and self._settings.monarch_password
+            ),
+            "mfa_secret_configured": bool(self._settings.monarch_mfa_secret),
+            "session_cached": bool(
+                self._settings.mm_session_file
+                and os.path.exists(self._settings.mm_session_file)
+            ),
+            "logged_in": self._mm is not None,
+        }
+
     @staticmethod
     def net_worth(accounts: list[Account]) -> NetWorth:
         # NetWorthByType uses friendly names; depository -> cash, the rest match.
