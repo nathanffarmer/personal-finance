@@ -1,31 +1,15 @@
 """Withdrawal-strategy targets.
 
-Each ``compute_*`` function takes (scenario, prior_state) and returns the
-target withdrawal in *real* dollars for the current year. They are stateless
-between trials — Monte Carlo passes a per-trial state dict.
+Each function takes (scenario, prior_state) and returns the target withdrawal
+in *real* dollars for the current year. They are stateless between trials —
+callers pass a per-trial state dict.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
-
 from ..models.retirement import ScenarioInput, WithdrawalStrategy
-
-
-def initial_target_spend(scenario: ScenarioInput) -> float:
-    """Pre-retirement years have no withdrawal; this is the post-retirement target."""
-    strat = scenario.withdrawal_strategy
-    if strat.kind == "four_percent":
-        rate = float(strat.params.get("initial_rate", 0.04))
-        return rate * scenario.current_portfolio  # overridden at retirement
-    if strat.kind == "guyton_klinger":
-        rate = float(strat.params.get("initial_rate", 0.05))
-        return rate * scenario.current_portfolio
-    if strat.kind == "vpw":
-        return 0.0  # computed at runtime from VPW table
-    return scenario.annual_spend_real
 
 
 def vpw_rate_for_age(age: int) -> float:
@@ -116,39 +100,19 @@ def _guyton_klinger(
     upper_guard = initial_rate * (1.0 + upper_pct)
     lower_guard = initial_rate * (1.0 - lower_pct)
 
-    skip_cuts = years_remaining <= prosperity_years
+    # Per Guyton-Klinger, the capital-preservation rule (the cut) is waived
+    # in the final ``prosperity_years`` of the plan; the prosperity rule
+    # (the raise) always applies.
+    waive_cut = years_remaining <= prosperity_years
     new_state = dict(state)
     new_state.setdefault("guardrail_events", [])
 
-    if current_rate > upper_guard:
+    if current_rate > upper_guard and not waive_cut:
         withdrawal *= 1.0 - adj_pct
         new_state["guardrail_events"] = [*new_state["guardrail_events"], "cut"]
-    elif current_rate < lower_guard and not skip_cuts:
+    elif current_rate < lower_guard:
         withdrawal *= 1.0 + adj_pct
         new_state["guardrail_events"] = [*new_state["guardrail_events"], "raise"]
 
     new_state["withdrawal"] = withdrawal
     return float(withdrawal), new_state
-
-
-def vectorized_withdrawals_fixed_real(
-    scenario: ScenarioInput, years: int, balance_at_retire: np.ndarray
-) -> np.ndarray:
-    """Vectorized helper for the simple fixed-real / 4% rule across trials.
-
-    Returns a (trials, years) array of real-dollar withdrawal targets,
-    zero before retirement.
-    """
-    trials = balance_at_retire.shape[0]
-    out = np.zeros((trials, years), dtype=float)
-    ret_idx = scenario.retirement_age - scenario.current_age
-    if ret_idx >= years:
-        return out
-
-    strat = scenario.withdrawal_strategy
-    if strat.kind == "fixed_real":
-        out[:, ret_idx:] = scenario.annual_spend_real
-    elif strat.kind == "four_percent":
-        rate = float(strat.params.get("initial_rate", 0.04))
-        out[:, ret_idx:] = (rate * balance_at_retire)[:, None]
-    return out

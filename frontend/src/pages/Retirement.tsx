@@ -30,6 +30,7 @@ export default function Retirement() {
   const [tab, setTab] = useState<Tab>("monte_carlo");
   const [trials, setTrials] = useState(10000);
   const [method, setMethod] = useState<"bootstrap" | "lognormal">("bootstrap");
+  const [includeCash, setIncludeCash] = useState(true);
 
   const deterministic = useMutation({
     mutationFn: () => retirementApi.deterministic(scenario),
@@ -50,7 +51,7 @@ export default function Retirement() {
       }),
   });
   const loadMonarch = useMutation({
-    mutationFn: () => retirementApi.fromMonarch(scenario),
+    mutationFn: () => retirementApi.fromMonarch(scenario, includeCash),
     onSuccess: (s) => setScenario(s),
   });
   const loadSheets = useMutation({
@@ -98,6 +99,14 @@ export default function Retirement() {
               {loadSheets.isPending ? "Loading…" : "Load from Sheets"}
             </button>
           </div>
+          <label className="flex items-center gap-2 text-xs text-slate-500 mb-3">
+            <input
+              type="checkbox"
+              checked={includeCash}
+              onChange={(e) => setIncludeCash(e.target.checked)}
+            />
+            Include checking/savings balances in portfolio
+          </label>
           {loadMonarch.error && (
             <p className="text-xs text-amber-700 mb-2">{errMsg(loadMonarch.error)}</p>
           )}

@@ -42,6 +42,7 @@ async def fire_numbers(req: FireRequest) -> FireNumbers:
 @router.post("/scenario/from_monarch", response_model=ScenarioInput)
 async def scenario_from_monarch(
     partial: ScenarioInput,
+    include_cash_accounts: bool = True,
     monarch: MonarchClient = Depends(get_monarch_client),
 ) -> ScenarioInput:
     """Hydrate current_portfolio + asset_allocation from live Monarch data.
@@ -49,6 +50,10 @@ async def scenario_from_monarch(
     The caller sends a ScenarioInput with their planning assumptions; this
     endpoint overwrites the portfolio value and allocation with real numbers
     derived from investment-account holdings.
+
+    ``include_cash_accounts=false`` excludes checking/savings balances —
+    useful when those hold an emergency fund or other earmarked money that
+    shouldn't inflate the retirement portfolio.
     """
     accounts = await monarch.list_accounts()
     investment_accounts = [
@@ -79,11 +84,12 @@ async def scenario_from_monarch(
             else:
                 other_value += h.market_value
 
-    # Cash sitting in depository accounts also counts toward the portfolio.
-    for account in accounts:
-        if account.type == "depository" and not account.is_hidden:
-            cash_value += account.balance_current
-            total += account.balance_current
+    if include_cash_accounts:
+        # Cash sitting in depository accounts also counts toward the portfolio.
+        for account in accounts:
+            if account.type == "depository" and not account.is_hidden:
+                cash_value += account.balance_current
+                total += account.balance_current
 
     if total <= 0:
         # Nothing classifiable; keep the caller's assumptions untouched.

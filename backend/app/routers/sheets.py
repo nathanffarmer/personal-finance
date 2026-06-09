@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
+import asyncio
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 
@@ -15,22 +16,22 @@ router = APIRouter(prefix="/api/sheets", tags=["sheets"])
 
 @router.get("/status", response_model=SheetsStatus)
 async def status(sheets: SheetsClient = Depends(get_sheets_client)) -> SheetsStatus:
-    return sheets.status()
+    return await asyncio.to_thread(sheets.status)
 
 
 @router.get("/assumptions", response_model=Assumptions)
 async def assumptions(sheets: SheetsClient = Depends(get_sheets_client)) -> Assumptions:
-    return sheets.read_assumptions()
+    return await asyncio.to_thread(sheets.read_assumptions)
 
 
 @router.get("/targets", response_model=list[TargetRow])
 async def targets(sheets: SheetsClient = Depends(get_sheets_client)) -> list[TargetRow]:
-    return sheets.read_targets()
+    return await asyncio.to_thread(sheets.read_targets)
 
 
 @router.get("/tab/{tab_name}")
 async def read_tab(tab_name: str, sheets: SheetsClient = Depends(get_sheets_client)) -> list[list]:
-    return sheets.read_tab(tab_name)
+    return await asyncio.to_thread(sheets.read_tab, tab_name)
 
 
 @router.post("/push/accounts", response_model=PushResult)
@@ -66,7 +67,7 @@ async def push_accounts(
             ],
         )
     tab = settings.sheets_tab_accounts
-    written = sheets.overwrite_tab(tab, rows)
+    written = await asyncio.to_thread(sheets.overwrite_tab, tab, rows)
     return PushResult(written_rows=written or len(rows), range=f"{tab}!A1")
 
 
@@ -89,7 +90,7 @@ async def push_holdings(
             "snapshot_at",
         ],
     ]
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     for a in accounts:
         if a.type != "investment":
             continue
@@ -108,7 +109,7 @@ async def push_holdings(
                 ],
             )
     tab = settings.sheets_tab_holdings
-    written = sheets.overwrite_tab(tab, rows)
+    written = await asyncio.to_thread(sheets.overwrite_tab, tab, rows)
     return PushResult(written_rows=written or len(rows), range=f"{tab}!A1")
 
 
@@ -137,5 +138,5 @@ async def push_projection(
             ],
         )
     tab = settings.sheets_tab_projections
-    written = sheets.overwrite_tab(tab, rows)
+    written = await asyncio.to_thread(sheets.overwrite_tab, tab, rows)
     return PushResult(written_rows=written or len(rows), range=f"{tab}!A1")

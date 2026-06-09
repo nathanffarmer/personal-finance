@@ -16,12 +16,19 @@ export function FanChart({ result }: { result: MonteCarloResult }) {
   const bands = result.percentiles;
   const rows = result.ages.map((age, i) => ({
     age,
-    // Stacked areas: render as a transparent base + deltas so each band fills.
+    // Stacked areas: a transparent base + deltas so each band fills. These
+    // are drawing-only series (tooltipType="none") because the deltas are
+    // meaningless to read; the tooltip shows the absolute percentiles below.
     base: bands.p5[i],
     band5to25: bands.p25[i] - bands.p5[i],
     band25to75: bands.p75[i] - bands.p25[i],
     band75to95: bands.p95[i] - bands.p75[i],
+    // Absolute percentile values, surfaced via invisible Lines.
+    p5: bands.p5[i],
+    p25: bands.p25[i],
     p50: bands.p50[i],
+    p75: bands.p75[i],
+    p95: bands.p95[i],
   }));
 
   return (
@@ -45,7 +52,6 @@ export function FanChart({ result }: { result: MonteCarloResult }) {
             stackId="band"
             stroke="none"
             fill="transparent"
-            name="p5"
             legendType="none"
             tooltipType="none"
           />
@@ -55,6 +61,7 @@ export function FanChart({ result }: { result: MonteCarloResult }) {
             stroke="none"
             fill="#cbd5e1"
             name="5-25%"
+            tooltipType="none"
           />
           <Area
             dataKey="band25to75"
@@ -62,6 +69,7 @@ export function FanChart({ result }: { result: MonteCarloResult }) {
             stroke="none"
             fill="#94a3b8"
             name="25-75%"
+            tooltipType="none"
           />
           <Area
             dataKey="band75to95"
@@ -69,6 +77,23 @@ export function FanChart({ result }: { result: MonteCarloResult }) {
             stroke="none"
             fill="#cbd5e1"
             name="75-95%"
+            tooltipType="none"
+          />
+          <Line
+            dataKey="p95"
+            stroke="none"
+            dot={false}
+            activeDot={false}
+            legendType="none"
+            name="95th percentile"
+          />
+          <Line
+            dataKey="p75"
+            stroke="none"
+            dot={false}
+            activeDot={false}
+            legendType="none"
+            name="75th percentile"
           />
           <Line
             dataKey="p50"
@@ -76,6 +101,22 @@ export function FanChart({ result }: { result: MonteCarloResult }) {
             strokeWidth={2}
             dot={false}
             name="Median"
+          />
+          <Line
+            dataKey="p25"
+            stroke="none"
+            dot={false}
+            activeDot={false}
+            legendType="none"
+            name="25th percentile"
+          />
+          <Line
+            dataKey="p5"
+            stroke="none"
+            dot={false}
+            activeDot={false}
+            legendType="none"
+            name="5th percentile"
           />
         </ComposedChart>
       </ResponsiveContainer>

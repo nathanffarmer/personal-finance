@@ -149,11 +149,14 @@ export const retirementApi = {
       method: "POST",
       body: JSON.stringify(req),
     }),
-  fromMonarch: (partial: ScenarioInput) =>
-    api<ScenarioInput>("/api/retirement/scenario/from_monarch", {
-      method: "POST",
-      body: JSON.stringify(partial),
-    }),
+  fromMonarch: (partial: ScenarioInput, includeCashAccounts = true) =>
+    api<ScenarioInput>(
+      `/api/retirement/scenario/from_monarch?include_cash_accounts=${includeCashAccounts}`,
+      {
+        method: "POST",
+        body: JSON.stringify(partial),
+      },
+    ),
 };
 
 export function defaultScenario(): ScenarioInput {

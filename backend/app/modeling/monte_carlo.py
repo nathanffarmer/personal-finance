@@ -225,14 +225,15 @@ def _guyton_klinger_vector(
 
     upper_guard = initial_rate * (1.0 + upper_pct)
     lower_guard = initial_rate * (1.0 - lower_pct)
-    skip_cuts = years_remaining <= prosperity_years
+    # Per Guyton-Klinger, the capital-preservation rule (the cut) is waived
+    # in the final prosperity_years of the plan; the prosperity rule (the
+    # raise) always applies.
+    waive_cut = years_remaining <= prosperity_years
 
-    # Capital-preservation rule: cut 10% if withdrawal rate breached upper guard.
-    cut = current_rate > upper_guard
-    gk_withdrawal[cut] *= 1.0 - adj_pct
-    # Prosperity rule: raise 10% if below lower guard (skipped near end of plan).
-    if not skip_cuts:
-        raise_mask = current_rate < lower_guard
-        gk_withdrawal[raise_mask] *= 1.0 + adj_pct
+    if not waive_cut:
+        cut = current_rate > upper_guard
+        gk_withdrawal[cut] *= 1.0 - adj_pct
+    raise_mask = current_rate < lower_guard
+    gk_withdrawal[raise_mask] *= 1.0 + adj_pct
 
     return gk_withdrawal.copy()

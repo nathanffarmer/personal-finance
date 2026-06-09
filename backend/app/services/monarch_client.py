@@ -280,9 +280,19 @@ class MonarchClient:
             category_id=category_id,
             notes=notes,
         )
-        # The mutation usually returns the updated transaction; otherwise re-fetch is overkill for one row.
         payload = _extract_first(raw, "transaction", "updateTransaction")
-        return map_transaction(payload or {"id": transaction_id, "amount": 0.0, "account": {"id": ""}, "date": date.today().isoformat()})
+        if payload is None:
+            # Don't fabricate a placeholder row the UI would briefly render;
+            # an unparseable mutation response means the library and Monarch's
+            # API have drifted, which the caller should hear about.
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=(
+                    "Monarch did not return the updated transaction. The update may "
+                    "still have applied — refresh to verify."
+                ),
+            )
+        return map_transaction(payload)
 
     def status(self) -> dict[str, Any]:
         """Report configuration/session state without forcing a login."""

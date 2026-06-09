@@ -436,6 +436,91 @@ def test_vpw_withdrawal_ignores_guaranteed_income_deterministic():
     assert p_ss.withdrawals == p_no.withdrawals
 
 
+def test_gk_cut_waived_in_prosperity_window():
+    """Regression: per Guyton-Klinger, the capital-preservation rule (the cut)
+    is waived in the final prosperity_years; the raise always applies. The
+    gating was previously inverted.
+
+    15-year plan with prosperity_years=15: every year is inside the window,
+    so even as the withdrawal rate climbs past the upper guardrail (flat 0%
+    returns shrink the balance), no cut may occur — withdrawals stay constant.
+    """
+    scenario = _simple_scenario(
+        current_age=65,
+        retirement_age=65,
+        end_age=80,
+        withdrawal_strategy=WithdrawalStrategy(
+            kind="guyton_klinger",
+            params={"initial_rate": 0.05, "prosperity_years": 15},
+        ),
+        return_assumptions=ReturnAssumptions(
+            equity_mean=0.0, bond_mean=0.0, equity_sd=0.0, bond_sd=0.0
+        ),
+    )
+    proj = project_deterministic(scenario)
+    # Initial withdrawal is 5% of $1M = $50k; with cuts waived it never drops.
+    assert proj.withdrawals[0] == pytest.approx(50_000)
+    assert min(proj.withdrawals) == pytest.approx(50_000)
+
+    # Outside the window (prosperity_years=0), the same scenario must cut.
+    cutting = _simple_scenario(
+        current_age=65,
+        retirement_age=65,
+        end_age=80,
+        withdrawal_strategy=WithdrawalStrategy(
+            kind="guyton_klinger",
+            params={"initial_rate": 0.05, "prosperity_years": 0},
+        ),
+        return_assumptions=ReturnAssumptions(
+            equity_mean=0.0, bond_mean=0.0, equity_sd=0.0, bond_sd=0.0
+        ),
+    )
+    proj_cutting = project_deterministic(cutting)
+    assert min(proj_cutting.withdrawals) < 50_000
+
+
+def test_gk_raise_applies_in_prosperity_window():
+    """The prosperity rule (the raise) is never waived: with strong constant
+    returns the withdrawal rate falls below the lower guardrail and spending
+    must rise, even in the final years of the plan."""
+    scenario = _simple_scenario(
+        current_age=65,
+        retirement_age=65,
+        end_age=80,
+        withdrawal_strategy=WithdrawalStrategy(
+            kind="guyton_klinger",
+            params={"initial_rate": 0.05, "prosperity_years": 15},
+        ),
+        return_assumptions=ReturnAssumptions(
+            equity_mean=0.10, bond_mean=0.10, equity_sd=0.0, bond_sd=0.0
+        ),
+    )
+    proj = project_deterministic(scenario)
+    assert max(proj.withdrawals) > proj.withdrawals[0]
+
+
+def test_gk_monte_carlo_matches_deterministic_on_flat_returns():
+    """With zero-variance lognormal returns every MC trial is the deterministic
+    path, so the GK withdrawal logic must agree between the two engines."""
+    scenario = _simple_scenario(
+        current_age=65,
+        retirement_age=65,
+        end_age=80,
+        withdrawal_strategy=WithdrawalStrategy(
+            kind="guyton_klinger",
+            params={"initial_rate": 0.05, "prosperity_years": 15},
+        ),
+        return_assumptions=ReturnAssumptions(
+            equity_mean=0.0, bond_mean=0.0, equity_sd=1e-9, bond_sd=1e-9
+        ),
+    )
+    det = project_deterministic(scenario)
+    mc = run_monte_carlo(
+        MonteCarloRequest(scenario=scenario, trials=200, method="lognormal", seed=8)
+    )
+    assert mc.percentiles.p50 == pytest.approx(det.balance_real, rel=1e-3)
+
+
 def test_vpw_monte_carlo_consistent_with_deterministic_convention():
     """Regression: the MC engine must not subtract guaranteed income from the
     VPW target (the deterministic engine never did). With the fix, an SS stream

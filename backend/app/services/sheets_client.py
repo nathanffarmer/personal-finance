@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -277,7 +277,7 @@ class SheetsClient:
             )
             .execute()
         )
-        self._last_write_at = datetime.utcnow()
+        self._last_write_at = datetime.now(UTC)
         return int(result.get("updatedRows") or 0)
 
     def overwrite_tab(self, tab: str, values: list[list[Any]]) -> int:
