@@ -6,12 +6,8 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe("api()", () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+  beforeEach(() => localStorage.clear());
+  afterEach(() => vi.unstubAllGlobals());
 
   it("attaches the X-App-Password header when a password is stored", async () => {
     setAppPassword("hunter2");
@@ -45,7 +41,7 @@ describe("api()", () => {
   });
 
   it("throws ApiError carrying the status and parsed body on non-2xx", async () => {
-    // A fresh Response per call: a Response body can only be read once.
+    // Fresh Response per call: a Response body can only be read once.
     const fetchMock = vi
       .fn()
       .mockImplementation(() => Promise.resolve(jsonResponse({ detail: "nope" }, 401)));

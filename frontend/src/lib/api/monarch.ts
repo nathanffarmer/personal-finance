@@ -68,14 +68,16 @@ export const monarchApi = {
   holdings: (id: string) => api<Holding[]>(`/api/monarch/accounts/${id}/holdings`),
   history: (id: string) => api<BalancePoint[]>(`/api/monarch/accounts/${id}/history`),
   netWorth: () => api<NetWorth>("/api/monarch/net_worth"),
-  transactions: (params: {
-    start?: string;
-    end?: string;
-    account_id?: string[];
-    category_id?: string[];
-    limit?: number;
-    offset?: number;
-  } = {}) => {
+  transactions: (
+    params: {
+      start?: string;
+      end?: string;
+      account_id?: string[];
+      category_id?: string[];
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) => {
     const q = new URLSearchParams();
     if (params.start) q.set("start", params.start);
     if (params.end) q.set("end", params.end);
@@ -96,7 +98,8 @@ export const monarchApi = {
       method: "POST",
       body: JSON.stringify(items),
     }),
-  clearCache: () => api<{ cleared: number }>("/api/monarch/cache/clear", { method: "POST" }),
+  clearCache: () =>
+    api<{ cleared: number }>("/api/monarch/cache/clear", { method: "POST" }),
   status: () =>
     api<{
       credentials_configured: boolean;

@@ -33,10 +33,9 @@ node_modules/
 .vite/
 
 # Frontend build output
-frontend/dist/
+frontend/build/
+frontend/.svelte-kit/
 frontend/.vite/
-frontend/tsconfig.tsbuildinfo
-frontend/*.tsbuildinfo
 
 # IDE
 .vscode/
@@ -47,7 +46,6 @@ frontend/*.tsbuildinfo
 
 # Generated
 shared/openapi.json
-frontend/src/types/api.ts
 
 # Test/coverage
 coverage/

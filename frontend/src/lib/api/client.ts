@@ -1,6 +1,11 @@
 const APP_PASSWORD_KEY = "pf:app_password";
 
+function isBrowser(): boolean {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
 export function setAppPassword(value: string | null): void {
+  if (!isBrowser()) return;
   if (value === null || value === "") {
     localStorage.removeItem(APP_PASSWORD_KEY);
   } else {
@@ -9,6 +14,7 @@ export function setAppPassword(value: string | null): void {
 }
 
 export function getAppPassword(): string | null {
+  if (!isBrowser()) return null;
   return localStorage.getItem(APP_PASSWORD_KEY);
 }
 
@@ -22,10 +28,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(
-  path: string,
-  init: RequestInit = {},
-): Promise<T> {
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers ?? {});
   if (!headers.has("Content-Type") && init.body) {
     headers.set("Content-Type", "application/json");

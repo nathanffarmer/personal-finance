@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { AccountTable } from "./AccountTable";
-import { Account } from "@/api/monarch";
+import { render, screen } from "@testing-library/svelte";
+import AccountTable from "./AccountTable.svelte";
+import type { Account } from "$api/monarch";
 
 function acct(overrides: Partial<Account>): Account {
   return {
@@ -21,9 +21,9 @@ function acct(overrides: Partial<Account>): Account {
 
 describe("AccountTable", () => {
   it("groups accounts by type and renders a per-group subtotal", () => {
-    render(
-      <AccountTable
-        accounts={[
+    render(AccountTable, {
+      props: {
+        accounts: [
           acct({ id: "1", name: "Checking", type: "depository", balance_current: 5000 }),
           acct({ id: "2", name: "Savings", type: "depository", balance_current: 3000 }),
           acct({
@@ -32,9 +32,9 @@ describe("AccountTable", () => {
             type: "investment",
             balance_current: 200000,
           }),
-        ]}
-      />,
-    );
+        ],
+      },
+    });
     expect(screen.getByText("Cash")).toBeInTheDocument();
     expect(screen.getByText("Investments")).toBeInTheDocument();
     expect(screen.getByText("Checking")).toBeInTheDocument();
@@ -43,20 +43,20 @@ describe("AccountTable", () => {
   });
 
   it("excludes hidden accounts", () => {
-    render(
-      <AccountTable
-        accounts={[
+    render(AccountTable, {
+      props: {
+        accounts: [
           acct({ id: "1", name: "Visible", balance_current: 100 }),
           acct({ id: "2", name: "Secret", balance_current: 999, is_hidden: true }),
-        ]}
-      />,
-    );
+        ],
+      },
+    });
     expect(screen.getByText("Visible")).toBeInTheDocument();
     expect(screen.queryByText("Secret")).not.toBeInTheDocument();
   });
 
   it("renders nothing for an empty account list", () => {
-    const { container } = render(<AccountTable accounts={[]} />);
+    const { container } = render(AccountTable, { props: { accounts: [] } });
     expect(container.querySelectorAll("table")).toHaveLength(0);
   });
 });

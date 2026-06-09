@@ -6,7 +6,7 @@ Single-user, self-hosted personal finance app:
 2. **Retirement modeling** — deterministic projections, Monte Carlo with probability of success, withdrawal strategies (4%, Guyton-Klinger guardrails, bond tent), Coast/Lean/Fat FIRE numbers. Hydrates from real portfolio data.
 3. **Google Sheets** — read budget assumptions + write Monarch snapshots and projection results back.
 
-Backend: Python 3.11+ + FastAPI. Frontend: React + Vite + TypeScript. Local-only for now.
+Backend: Python 3.11+ + FastAPI. Frontend: SvelteKit + TypeScript + Tailwind, with [LayerChart](https://layerchart.com/) for projections. Local-only for now.
 
 ## Quick start
 
@@ -45,8 +45,8 @@ backend/app/
   modeling/{returns,deterministic,monte_carlo,withdrawal,glide_path,fire,tax}.py
   tests/
 frontend/src/
-  pages/{Dashboard,Transactions,Retirement,Sheets,Settings}.tsx
-  components/  api/  hooks/  types/
+  routes/{+page,transactions,retirement,sheets,settings}    # SvelteKit pages
+  lib/{components,api,stores}                               # .svelte + .ts
 scripts/{bootstrap_oauth,monarch_login}.py
 secrets/   (gitignored)
 ```

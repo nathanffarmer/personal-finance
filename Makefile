@@ -41,14 +41,14 @@ test-frontend:
 
 fmt:
 	. .venv/bin/activate && ruff format backend
-	cd frontend && npx prettier --write "src/**/*.{ts,tsx,css}" 2>/dev/null || true
+	cd frontend && npx prettier --write "src/**/*.{ts,svelte,css}" 2>/dev/null || true
 
 lint:
 	. .venv/bin/activate && ruff check backend
-	cd frontend && npx tsc -b --noEmit
+	cd frontend && npm run check
 
 openapi:
 	. .venv/bin/activate && python -c "from backend.app.main import app; import json; print(json.dumps(app.openapi(), indent=2))" > shared/openapi.json
 
 clean:
-	rm -rf .venv frontend/node_modules frontend/dist shared/openapi.json
+	rm -rf .venv frontend/node_modules frontend/build frontend/.svelte-kit shared/openapi.json
